@@ -8,7 +8,7 @@ RUN curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/c
     -o /usr/bin/cloudflared && chmod +x /usr/bin/cloudflared
 
 WORKDIR /app
-
+ 
 # ✅ FIX DI SINI
 RUN cat <<'EOF' > /entrypoint.sh
 #!/bin/bash
