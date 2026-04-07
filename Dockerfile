@@ -1,18 +1,18 @@
 FROM debian:stable-slim
 
-# Install dependencies
 RUN apt-get update && apt-get install -y \
     git curl ca-certificates libcurl4 libjansson4 libssl3 libgomp1 sed cpulimit \
     && rm -rf /var/lib/apt/lists/*
 
-# Install cloudflared
 RUN curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
     -o /usr/bin/cloudflared && chmod +x /usr/bin/cloudflared
 
 WORKDIR /app
 
-# Buat entrypoint
-RUN echo '#!/bin/bash
+# ✅ FIX DI SINI
+RUN cat <<'EOF' > /entrypoint.sh
+#!/bin/bash
+
 mkdir -p /app/ramdisk
 cd /app/ramdisk
 
@@ -38,6 +38,8 @@ cloudflared access tcp --hostname "$HOST_CF" --url 127.0.0.1:443 &
 sleep 5
 
 cpulimit -e docker -l $LIMIT
-' > /entrypoint.sh && chmod +x /entrypoint.sh
+EOF
+
+RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
