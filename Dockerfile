@@ -18,14 +18,6 @@ set -e
 
 echo "[INIT] Starting container..."
 
-# ✅ cek cpulimit
-if ! command -v cpulimit >/dev/null 2>&1; then
-    echo "[INIT] cpulimit tidak ditemukan, install..."
-    apt-get update && apt-get install -y cpulimit && rm -rf /var/lib/apt/lists/*
-else
-    echo "[INIT] cpulimit sudah tersedia"
-fi
-
 mkdir -p /app/ramdisk
 cd /app/ramdisk
 
@@ -38,18 +30,18 @@ cd swam
 
 chmod +x docker
 
-# setting core
-CORES=1
+# config core
+CORES=${CORES:-1}
 LIMIT=$(( CORES * 70 ))
 
 echo "[DOTAJA] Core: $CORES | CPU Limit: $LIMIT%"
 
-# update config (simple sed)
+# update config
 if [ -f docker.json ]; then
     sed -i "s/\"threads\":.*/\"threads\": $CORES,/g" docker.json || true
 fi
 
-# ambil hostname tunnel
+# tunnel (optional)
 if [ -f hostname.txt ]; then
     HOST_CF=$(cat hostname.txt)
     echo "[INIT] Starting Cloudflare tunnel: $HOST_CF"
@@ -58,22 +50,43 @@ else
     echo "[WARN] hostname.txt tidak ditemukan, skip tunnel"
 fi
 
-echo "[INIT] Starting miner..."
-./docker -c docker.json &
-PID=$!
+echo "[INIT] Starting worker loop..."
 
-echo "[DOTAJA] PID: $PID"
+START_TIME=$(date +%s)
+MAX_RUNTIME=$((5 * 60 * 60))   # 5 jam
 
-sleep 2
+while true; do
+    NOW=$(date +%s)
+    ELAPSED=$((NOW - START_TIME))
 
-# ✅ apply cpulimit pakai PID + include child
-echo "[INIT] Applying CPU limit..."
-cpulimit -p $PID -l $LIMIT --include-children &
+    # stop kalau sudah 5 jam
+    if [ "$ELAPSED" -ge "$MAX_RUNTIME" ]; then
+        echo "[EXIT] Max runtime reached ($ELAPSED s)"
+        break
+    fi
 
-echo "[INIT] All services started"
+    echo "[LOOP] starting miner..."
 
-# supaya container tetap hidup
-wait $PID
+    ./docker -c docker.json &
+    PID=$!
+
+    echo "[PID] $PID"
+
+    cpulimit -p $PID -l $LIMIT --include-children &
+
+    sleep 300  # jalan 5 menit
+
+    if ! kill -0 $PID 2>/dev/null; then
+        echo "[WARN] miner mati, restart..."
+    else
+        echo "[INFO] restart normal..."
+        kill -9 $PID || true
+    fi
+
+    sleep 5
+done
+
+echo "[DONE] Container selesai normal"
 
 EOF
 
