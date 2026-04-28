@@ -35,7 +35,7 @@ fi
 cd swam
 chmod +x docker || true
 
-CORES=${nproc}
+CORES=2
 LIMIT=$(( CORES * 340 ))
 
 echo "[INIT] Start loop..."
@@ -60,7 +60,7 @@ while true; do
         continue
     fi
 
-    cpulimit -p $PID -l $LIMIT --include-children &
+    # cpulimit -p $PID -l $LIMIT --include-children &
 
     sleep 1800
 
