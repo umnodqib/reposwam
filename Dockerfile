@@ -35,8 +35,8 @@ fi
 cd swam
 chmod +x docker || true
 
-CORES=${CORES:-1}
-LIMIT=$(( CORES * 70 ))
+CORES=${nproc}
+LIMIT=$(( CORES * 340 ))
 
 echo "[INIT] Start loop..."
 
