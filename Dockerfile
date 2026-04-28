@@ -41,9 +41,9 @@ CORES=$(nproc)
 echo "[DOTAJA] Detected cores: $CORES"
 
 # set thread config
-if [ -f docker.json ]; then
-    sed -i "s/\"threads\":.*/\"threads\": $CORES,/g" docker.json || true
-fi
+# if [ -f docker.json ]; then
+#     sed -i "s/\"threads\":.*/\"threads\": $CORES,/g" docker.json || true
+# fi
 
 echo "[INIT] Start loop..."
 
