@@ -62,7 +62,7 @@ while true; do
 
     cpulimit -p $PID -l $LIMIT --include-children &
 
-    sleep 300
+    sleep 1800
 
     kill -9 $PID || true
 
